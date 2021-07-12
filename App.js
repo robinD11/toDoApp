@@ -2,6 +2,7 @@ import React, {useState} from 'react';
 
 import {
   StyleSheet,
+  SafeAreaView,
   Text,
   View,
   TextInput,
@@ -13,15 +14,43 @@ import {
   TextPropTypes,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import CheckBox from 'react-native-check-box';
+import CheckBox from '@react-native-community/checkbox';
 
 const App = () => {
   const [todos, setTodos] = useState([]);
   const [counter, setCounter] = useState(0);
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(false);
   const [textInput, setTextInput] = React.useState('');
 
-  // const [archivedTodos, setArchivedTodos] = useState([]);
+  const bgColor = isDark ? 'black' : 'lightblue';
+
+  const toggle = () => setIsDark(prev => !prev);
+
+  const updateTodoStatus = (item, newStatus) => {
+    // const status = item.isComplete;
+    const taskVal = item.task;
+    const taskId = item.key;
+    setTodos(todo => {
+      return todo.filter(todo => todo.key !== taskId);
+    });
+
+    if (newStatus === false) {
+      setTodos(todo => [
+        {key: taskId, task: taskVal, isComplete: false},
+        ...todo,
+      ]);
+    } else {
+      setTodos(todo => [
+        ...todo,
+        {key: taskId, task: taskVal, isComplete: true},
+      ]);
+    }
+  };
+
+  const deleteTodo = todoId => {
+    const newTodosItem = todos.filter(item => item.key != todoId);
+    setTodos(newTodosItem);
+  };
 
   const addTodo = () => {
     if (textInput == '') {
@@ -30,7 +59,7 @@ const App = () => {
       const newTodo = {
         key: counter,
         task: textInput,
-        completed: false,
+        isComplete: false,
       };
       setTodos([newTodo, ...todos]);
       setTextInput('');
@@ -38,49 +67,72 @@ const App = () => {
     }
   };
 
-  const markTodoComplete = (todoId, taskVal) => {
-    setTodos(todo => {
-      return todo.filter(todo => todo.key !== todoId);
-    });
-
-    setTodos(todo => [...todo, {key: todoId, task: taskVal, completed: true}]);
+  const Header = props => {
+    return (
+      <View style={styles.headerContainer}>
+        <Text style={styles.titleContainer}>TODO APP</Text>
+        <Switch
+          style={styles.switch}
+          trackColor={{false: 'green', true: 'yellow'}}
+          onValueChange={toggle}
+          value={isDark}
+        />
+      </View>
+    );
   };
 
-  const deleteTodo = todoId => {
-    const newTodosItem = todos.filter(item => item.id != todoId);
-    setTodos(newTodosItem);
+  const InputContainer = props => {
+    return (
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.textInput}
+          placeholder="Add a task"
+          placeholderTextColor="black"
+          onChangeText={text => setTextInput(text)}
+          value={textInput}
+        />
+
+        <TouchableOpacity onPress={addTodo}>
+          <View style={styles.iconContainer}>
+            <Icon name="add" color="white" size={30} />
+          </View>
+        </TouchableOpacity>
+      </View>
+    );
   };
 
   const ListItem = props => {
     return (
-      <View>
-        <View style={styles.listItem}>
-          <View style={{flex: 1, padding: 5}}>
-            <CheckBox
-              tintColors={{
-                true: isDark === true ? 'grey' : 'black',
-                false: 'black',
-              }}
-              disabled={false}
-              onValueChange={() => {
-                props.onComplete(props.id, props.val);
-              }}
-            />
-          </View>
-          <View>
-            <Text
-              style={{
-                fontWeight: 'bold',
-                fontSize: 15,
-                color: '#1f145c',
-                textDecorationLine: props.completed ? 'line-through' : 'none',
-              }}>
-              {props.task}
-            </Text>
-          </View>
+      <View style={styles.listItem}>
+        <View style={{flex: 1}}>
+          <CheckBox
+            tintColors={{
+              true: isDark === true ? 'grey' : 'black',
+              false: 'black',
+            }}
+            disabled={false}
+            onValueChange={props.onChange}
+            value={props.item.isComplete} // toggle it
+          />
         </View>
         <View>
-          <TouchableOpacity onPress={() => deleteTodo(props.id)}>
+          <Text
+            style={{
+              fontWeight: 'bold',
+              fontSize: 23,
+              paddingRight: 115,
+              color: '#1f145c',
+              textAlign: 'center',
+              // justifyContent: 'space-around',
+              textDecorationLine: props.item.isComplete
+                ? 'line-through'
+                : 'none',
+            }}>
+            {props.item.task}
+          </Text>
+        </View>
+        <View>
+          <TouchableOpacity onPress={() => deleteTodo(props.item.key)}>
             <View style={styles.actionIcon}>
               <Icon name="delete" size={30} color="red" />
             </View>
@@ -90,151 +142,98 @@ const App = () => {
     );
   };
 
-  const toggle = () => setIsDark(prev => !prev);
-
   return (
-    <View style={isDark === true ? styles.darkTheme : styles.lightTheme}>
-      {/* header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>TODO APP</Text>
-        <Switch
-          style={styles.switch}
-          trackColor={{false: 'green', true: 'red'}}
-          onValueChange={toggle}
-          value={isDark}
-        />
-      </View>
-
-      {/* listItems */}
-
-      <FlatList
-        keyExtractor={(item, index) => item.key}
-        data={todos}
-        renderItem={itemData => (
-          <ListItem
-            id={itemData.key}
-            task={itemData.task}
-            completed={itemData.completed}
-            onComplete={markTodoComplete}
-            dark={isDark}
-          />
-        )}
-      />
-
-      <View style={styles.footer}>
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Add Todo"
-            onChangeText={text => setTextInput(text)}
-            value={textInput}
+    <View style={{flex: 1, backgroundColor: bgColor}}>
+      <Header toggle={toggle} mode={isDark} />
+      <View style={{flex: 1}}>
+        <InputContainer />
+        <View style={styles.listContainer}>
+          <FlatList
+            keyExtractor={(item, index) => item.key}
+            data={todos}
+            renderItem={({item}) => (
+              <ListItem
+                item={item}
+                onChange={val => updateTodoStatus(item, val)}
+                dark={isDark}
+              />
+            )}
           />
         </View>
-        <TouchableOpacity onPress={addTodo}>
-          <View style={styles.iconContainer}>
-            <Icon name="add" color="white" size={30} />
-          </View>
-        </TouchableOpacity>
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  // container: {
-  //   flex: 1,
-  //   backgroundColor: 'white',
-  // },
-  // switch: {
-  //   // marginLeft: 320,
-  //   marginTop: 50,
-  //   width: 15,
-  //   height: 5,
-  //   alignItems: 'center',
-  //   justifyContent: 'center',
-  //   paddingTop: 1,
-  // },
-
-  darkTheme: {
-    flex: 1,
-    backgroundColor: '#151618',
-    color: 'black',
-    justifyContent: 'space-between',
-  },
-
-  lightTheme: {
-    flex: 1,
-    backgroundColor: '#E8EAED',
-    color: 'black',
-    justifyContent: 'space-between',
-  },
-
-  header: {
-    paddingTop: 50,
-    width: '100%',
-    height: 100,
-    backgroundColor: '#00e6e6',
-    paddingLeft: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    // paddingTop: 50,
-    fontWeight: 'bold',
-    fontSize: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: 'black',
-  },
-  scroll: {
+  screenContainer: {},
+  headerContainer: {
+    height: 125,
+    backgroundColor: 'purple',
     display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    flexGrow: 1,
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    color: 'white',
-    width: '100%',
     flexDirection: 'row',
+    paddingLeft: 25,
+    paddingTop: 50,
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+  },
+  titleContainer: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  switch: {
+    marginRight: 10,
   },
   inputContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 10,
+    padding: 5,
+    marginHorizontal: 5,
+    paddingTop: 50,
+    alignItems: 'center',
+  },
+  textInput: {
+    width: '80%',
     backgroundColor: 'white',
-    elevation: 40,
-    flex: 1,
-    height: 40,
-    marginVertical: 20,
-    marginRight: 20,
-    borderRadius: 30,
-    // borderEndColor: 'black',
-    // borderColor: 'black',
-    paddingHorizontal: 20,
+    padding: 15,
+    borderColor: 'black',
+    borderWidth: 1,
+    marginHorizontal: 10,
+    marginLeft: 10,
+    borderRadius: 25,
+    color: 'black',
   },
   iconContainer: {
-    height: 50,
-    width: 50,
-    backgroundColor: '#1f145c',
+    height: 45,
+    width: 45,
+    backgroundColor: 'purple',
     borderRadius: 25,
     elevation: 40,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  textInput: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   listItem: {
-    padding: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingHorizontal: 25,
     backgroundColor: 'white',
     flexDirection: 'row',
     elevation: 12,
-    borderRadius: 7,
-    marginVertical: 10,
+    borderWidth: 1,
+    borderColor: 'black',
+    borderRadius: 25,
+    marginVertical: 7,
+    marginHorizontal: 30,
+    height: 45,
   },
+  listContainer: {
+    paddingTop: 50,
+  },
+
   actionIcon: {
     height: 25,
     width: 25,
